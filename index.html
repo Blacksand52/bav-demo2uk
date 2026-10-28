@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BAV — Make your student loan last the term</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1016;
+    --panel:#151b24;
+    --panel-2:#1b2330;
+    --line:#2a3444;
+    --brass:#c9a468;
+    --brass-dim:rgba(201,164,104,.12);
+    --teal:#4fa8a0;
+    --teal-dim:rgba(79,168,160,.12);
+    --amber:#d98f4f;
+    --amber-dim:rgba(217,143,79,.12);
+    --red:#d9695f;
+    --text:#f2ede4;
+    --sub:#8f97a3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--ink); color:var(--text);
+    font-family:'Inter',sans-serif; display:flex; flex-direction:column; align-items:center;
+    padding:28px 16px 60px;
+  }
+  h1{
+    font-family:'Fraunces',serif; font-weight:500; font-size:22px; letter-spacing:.01em;
+    margin:0 0 4px;
+  }
+  .sub{color:var(--sub); font-size:13px; margin-bottom:24px; text-align:center; max-width:440px;}
+  .feedback-line a{color:var(--teal);}
+  .mode-toggle{display:flex; gap:8px; margin-bottom:28px; background:var(--panel); padding:5px; border-radius:10px; border:1px solid var(--line);}
+  .mode-btn{
+    background:transparent; border:none; color:var(--sub); font-family:'Inter',sans-serif;
+    font-size:13px; font-weight:600; padding:9px 18px; border-radius:7px; cursor:pointer;
+    letter-spacing:.02em;
+  }
+  .mode-btn.active{background:var(--panel-2); color:var(--text);}
+  .view{width:100%; max-width:420px; display:none;}
+  .view.active{display:block;}
+
+  /* ---- Card view ---- */
+  .wallet-tabs{display:flex; gap:8px; margin-bottom:18px;}
+  .wtab{flex:1; background:var(--panel); border:1px solid var(--line); color:var(--sub); font-family:'Inter',sans-serif;
+    font-size:12px; font-weight:600; padding:9px; border-radius:8px; cursor:pointer; text-transform:uppercase; letter-spacing:.04em;}
+  .wtab.ess.active{border-color:var(--teal); color:var(--teal); background:var(--teal-dim);}
+  .wtab.disc.active{border-color:var(--amber); color:var(--amber); background:var(--amber-dim);}
+
+  .card{
+    border-radius:18px; padding:24px; height:220px; position:relative; overflow:hidden;
+    display:flex; flex-direction:column; justify-content:space-between;
+    border:1px solid var(--line); transition:border-color .3s, transform .2s, box-shadow .3s;
+    box-shadow:0 20px 40px rgba(0,0,0,.35);
+  }
+  .card.ess{
+    background:linear-gradient(150deg, #16233b 0%, #0d1420 100%);
+    border-color:rgba(79,168,160,.4);
+  }
+  .card.disc{
+    background:linear-gradient(150deg, #23201d 0%, #12100e 100%);
+    border-color:rgba(217,143,79,.4);
+  }
+  .card.frozen{filter:grayscale(0.7); opacity:0.55;}
+  .card.charging{transform:scale(0.97);}
+  .card.ess.charging{box-shadow:0 0 0 3px rgba(79,168,160,.5), 0 20px 40px rgba(0,0,0,.35);}
+  .card.disc.charging{box-shadow:0 0 0 3px rgba(217,143,79,.5), 0 20px 40px rgba(0,0,0,.35);}
+  .card-skyline{position:absolute; right:0; bottom:0; opacity:.16; pointer-events:none;}
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:1;}
+  .brand{font-family:'Fraunces',serif; font-size:19px; letter-spacing:.02em; display:flex; align-items:center; gap:7px;}
+  .brand .mark{color:var(--teal); font-size:15px;}
+  .card.disc .brand .mark{color:var(--amber);}
+  .region-tag{font-size:9px; color:var(--sub); letter-spacing:.08em; text-align:right;}
+  .contactless{width:20px; height:20px; margin-top:4px; align-self:flex-end;}
+  .card-mid{position:relative; z-index:1; display:flex; justify-content:space-between; align-items:flex-end;}
+  .chip{width:36px; height:27px; border-radius:5px; background:linear-gradient(135deg,#d8bd85,#a9853f);}
+  .wallet-label{font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:600;}
+  .card.ess .wallet-label{color:var(--teal);}
+  .card.disc .wallet-label{color:var(--amber);}
+  .card-number{position:relative; z-index:1; font-family:'IBM Plex Mono',monospace; font-size:16.5px; letter-spacing:.06em; margin-top:10px;}
+  .card-bottom{position:relative; z-index:1; display:flex; justify-content:space-between; align-items:flex-end; margin-top:10px;}
+  .valid-thru{font-size:8.5px; color:var(--sub); text-transform:uppercase; letter-spacing:.05em; line-height:1.5;}
+  .valid-thru b{display:block; font-size:11px; color:var(--text); font-family:'IBM Plex Mono',monospace; letter-spacing:.03em;}
+  .card-brand-foot{text-align:right;}
+  .card-brand-foot .vc{font-family:'Fraunces',serif; font-style:italic; font-size:15px;}
+  .card-brand-foot .vs{font-size:8px; color:var(--sub); letter-spacing:.05em; text-transform:uppercase;}
+  .bal-value{font-family:'Fraunces',serif; font-size:26px;}
+
+  .token-box{margin-top:22px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; text-align:center;}
+  .token-id{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text); letter-spacing:.03em;}
+  .token-note{font-size:11px; color:var(--sub); margin-top:6px;}
+  .pulse-dot{display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--teal); margin-right:6px; animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+  .last-tx{margin-top:14px; font-size:12px; color:var(--sub); text-align:center; min-height:16px;}
+  .last-tx b{color:var(--text);}
+  .receipt-lines{margin-top:8px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--sub); text-align:left; line-height:1.6;}
+  .alert-line{margin-top:6px; font-size:11px; color:var(--amber);}
+
+  /* ---- Security settings (opt-in) ---- */
+  .settings-box{margin-top:14px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;}
+  .loan-date-box{margin-top:14px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;}
+  .loan-date-box label{font-size:12px; color:var(--sub); display:block; margin-bottom:6px;}
+  .date-input{width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:7px;
+    padding:8px 10px; color:var(--text); font-family:'Inter',sans-serif; font-size:12px;}
+  .safe-spend{margin-top:10px; text-align:center;}
+  .safe-spend .amt{font-family:'Fraunces',serif; font-size:22px; color:var(--teal);}
+  .safe-spend .lbl{font-size:11px; color:var(--sub); margin-top:2px;}
+  .safe-spend.expired .amt{color:var(--red);}
+  .security-details{margin-top:14px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:2px 16px;}
+  .security-details summary{padding:12px 0; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--text); list-style:none;}
+  .security-details summary::-webkit-details-marker{display:none;}
+  .security-details summary::before{content:'🔒 '; }
+  .security-details summary::after{content:'▸'; float:right; color:var(--sub);}
+  .security-details[open] summary::after{content:'▾';}
+  .security-details .sec-body{font-size:11.5px; color:var(--sub); line-height:1.6; padding-bottom:14px;}
+  .security-details .sec-body b{color:var(--text);}
+  .settings-row{display:flex; align-items:center; gap:9px; font-size:12px; color:var(--sub);}
+  .settings-row input[type=checkbox]{width:15px; height:15px; accent-color:var(--teal);}
+  .settings-note{font-size:10.5px; color:var(--sub); margin-top:6px; line-height:1.5;}
+  /* ---- Session (pairing) ---- */
+  .session-box{width:100%; max-width:420px; margin-bottom:18px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:2px 16px;}
+  .session-box summary{display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 0; cursor:pointer; list-style:none; font-size:13px; color:var(--text);}
+  .session-box summary::-webkit-details-marker{display:none;}
+  .session-box summary::after{content:'\25BE'; margin-left:auto; color:var(--sub);}
+  .session-box[open] summary::after{content:'\25B4';}
+  .s-label{color:var(--sub);}
+  .s-code{font-family:'IBM Plex Mono',monospace; font-weight:500; letter-spacing:.12em; color:var(--teal);}
+  .s-hint{color:var(--sub); font-size:12px;}
+  .s-body{padding:0 0 16px; border-top:1px solid var(--line);}
+  .s-pair{display:flex; gap:16px; align-items:center; padding-top:14px;}
+  .s-qr{flex:0 0 auto; background:#fff; padding:10px; border-radius:10px; width:148px; height:148px; line-height:0;}
+  .s-qr svg{width:100%; height:100%; display:block;}
+  .s-info{font-size:12px; color:var(--sub); line-height:1.5;}
+  .s-info p{margin:0 0 8px;}
+  .s-info p.s-big{font-family:'IBM Plex Mono',monospace; font-size:22px; letter-spacing:.18em; color:var(--text); margin:0 0 10px;}
+  .s-btn{background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;}
+  .s-btn:hover{border-color:var(--teal);}
+  .s-copied{font-size:11.5px; color:var(--teal); margin-left:8px;}
+  .s-join{margin-top:16px; padding-top:14px; border-top:1px dashed var(--line);}
+  .s-join label{display:block; font-size:12px; color:var(--sub); margin-bottom:6px;}
+  .s-row{display:flex; gap:8px;}
+  .s-row input{flex:1; min-width:0; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:9px 10px; color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:14px; letter-spacing:.12em; text-transform:uppercase;}
+  .s-msg{font-size:12px; color:var(--amber); margin:8px 0 0; min-height:1.2em;}
+  .s-fine{font-size:11px; color:var(--sub); margin:12px 0 0; line-height:1.5;}
+  @media (max-width:420px){ .s-pair{flex-direction:column; align-items:flex-start;} }
+
+  .contact-input{margin-top:8px; width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:7px;
+    padding:8px 10px; color:var(--text); font-family:'Inter',sans-serif; font-size:12px;}
+  .contact-input::placeholder{color:var(--sub);}
+
+  /* ---- Tap-to-pay overlay ---- */
+  .tap-overlay{
+    background:var(--panel); border:2px solid var(--teal); border-radius:14px; padding:22px;
+    text-align:center; margin-bottom:18px; display:none;
+  }
+  .tap-overlay.show{display:block;}
+  .tap-overlay.confirm-step{border-color:var(--amber);}
+  .tap-overlay .amt{font-family:'Fraunces',serif; font-size:30px; margin:6px 0 2px;}
+  .tap-overlay .desc{font-size:12px; color:var(--sub); margin-bottom:16px;}
+  .reflection-note{display:none; background:rgba(217,143,79,.1); border:1px solid rgba(217,143,79,.4); border-radius:9px;
+    padding:10px 12px; font-size:12px; color:var(--amber); text-align:left; margin:0 0 16px; line-height:1.5;}
+  .reflection-note.show{display:block;}
+  .bill-row{display:flex; gap:8px; margin-top:10px;}
+  .bill-row input{flex:1;}
+  .reserve-note{margin-top:10px; font-size:11.5px; color:var(--sub); text-align:center; line-height:1.5;}
+  .reserve-note.warn{color:var(--red);}
+  .tap-ring{
+    width:80px; height:80px; margin:0 auto 16px; border-radius:50%;
+    border:2px solid var(--teal); display:flex; align-items:center; justify-content:center;
+    animation:ring-pulse 1.6s infinite; cursor:pointer;
+  }
+  .tap-ring.amber{border-color:var(--amber); animation:ring-pulse-amber 1.6s infinite;}
+  @keyframes ring-pulse{0%{box-shadow:0 0 0 0 rgba(79,168,160,.45);}70%{box-shadow:0 0 0 16px rgba(79,168,160,0);}100%{box-shadow:0 0 0 0 rgba(79,168,160,0);}}
+  @keyframes ring-pulse-amber{0%{box-shadow:0 0 0 0 rgba(217,143,79,.45);}70%{box-shadow:0 0 0 16px rgba(217,143,79,0);}100%{box-shadow:0 0 0 0 rgba(217,143,79,0);}}
+  .tap-btn{background:var(--teal); color:#0c1016; border:none; padding:11px 22px; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;}
+  .tap-btn.amber{background:var(--amber);}
+  .tap-processing{display:none; font-size:12px; color:var(--sub); margin-top:10px;}
+  .tap-processing.show{display:block;}
+  .decline-link{display:block; margin:12px auto 0; background:none; border:none; color:var(--sub); font-size:12px;
+    text-decoration:underline; cursor:pointer;}
+  .decline-link:hover{color:var(--red);}
+
+  /* ---- Frozen card overlay ---- */
+  .frozen-overlay{
+    background:var(--panel); border:2px solid var(--red); border-radius:14px; padding:22px;
+    text-align:center; margin-bottom:18px; display:none;
+  }
+  .frozen-overlay.show{display:block;}
+  .frozen-overlay .ficon{font-size:28px; margin-bottom:8px;}
+  .frozen-overlay .ftitle{font-family:'Fraunces',serif; font-size:19px; color:var(--red); margin-bottom:6px;}
+  .frozen-overlay .fdesc{font-size:12px; color:var(--sub); margin-bottom:16px; line-height:1.5;}
+  .unlock-btn{background:var(--red); color:#fff; border:none; padding:11px 22px; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;}
+
+  /* ---- Till view ---- */
+  .till-h{font-family:'Fraunces',serif; font-size:18px; margin:0 0 4px;}
+  .till-sub{font-size:12px; color:var(--sub); margin:0 0 16px;}
+  .cat-label{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--sub); margin:18px 0 8px;}
+  .item-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .item-card{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:11px 12px; cursor:pointer; text-align:left; color:var(--text);}
+  .item-card:active{transform:scale(0.98);}
+  .item-card .nm{font-size:12.5px; font-weight:600; line-height:1.25;}
+  .item-card .pr{font-family:'IBM Plex Mono',monospace; font-size:12px; margin-top:6px;}
+  .item-card.ess .pr{color:var(--teal);}
+  .item-card.disc .pr{color:var(--amber);}
+  .item-card .badge{font-size:9px; text-transform:uppercase; letter-spacing:.05em; color:var(--sub); margin-top:3px; display:block;}
+  .item-card:disabled, .item-card.locked{opacity:.35; cursor:not-allowed;}
+
+  .basket-box{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-top:22px;}
+  .basket-h{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .basket-h .t{font-size:13px; font-weight:600;}
+  .basket-h .clear{font-size:11px; color:var(--sub); background:none; border:none; cursor:pointer; text-decoration:underline;}
+  .basket-empty{font-size:12px; color:var(--sub); padding:8px 0;}
+  .basket-line{display:flex; justify-content:space-between; font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--line);}
+  .basket-line:last-child{border-bottom:none;}
+  .basket-line .rm{color:var(--red); cursor:pointer; font-size:11px; margin-left:8px;}
+  .basket-total{display:flex; justify-content:space-between; font-size:14px; font-weight:600; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);}
+
+  .pay-btn{width:100%; margin-top:14px; background:var(--teal); color:#0c1016; border:none; padding:13px; border-radius:9px;
+    font-size:14px; font-weight:700; cursor:pointer; letter-spacing:.02em;}
+  .pay-btn:disabled{opacity:.35; cursor:not-allowed;}
+
+  .waiting-box{display:none; text-align:center; padding:10px 0 4px;}
+  .waiting-box.show{display:block;}
+  .waiting-box .wtxt{font-size:13px; font-weight:600; margin-top:10px;}
+  .waiting-box .wamt{font-family:'Fraunces',serif; font-size:22px; margin-top:2px;}
+  .spinner{width:26px; height:26px; margin:0 auto; border:2px solid var(--line); border-top-color:var(--teal); border-radius:50%; animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .cancel-btn{margin-top:14px; background:transparent; border:1px solid var(--line); color:var(--sub); padding:8px 16px; border-radius:8px; font-size:12px; cursor:pointer;}
+
+  .frozen-banner{display:none; background:rgba(217,105,95,.1); border:1px solid rgba(217,105,95,.4); border-radius:10px;
+    padding:12px 14px; font-size:12px; color:var(--red); text-align:center; margin-top:16px;}
+  .frozen-banner.show{display:block;}
+
+  .ledger-summary{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; text-align:center; margin:20px 0 16px;}
+  .ledger-summary .lbl{font-size:11px; color:var(--sub); text-transform:uppercase; letter-spacing:.06em;}
+  .ledger-summary .total{font-family:'Fraunces',serif; font-size:26px; margin:4px 0;}
+  .cap-line{font-size:12px; color:var(--sub); margin-top:6px;}
+  .cap-line span{color:var(--teal); font-weight:600;}
+
+  .terminal{background:#080a0e; border:1px solid var(--line); border-radius:10px; padding:14px 16px; height:170px; overflow-y:auto;
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; line-height:1.6; color:#7fdc9a;}
+  .terminal .err{color:var(--red);}
+  .terminal .sys{color:var(--sub);}
+  .terminal .ok{color:#7fdc9a;}
+  .terminal .warn{color:var(--amber);}
+
+  .reset-btn{width:100%; margin-top:16px; background:transparent; border:1px solid rgba(217,105,95,.4); color:var(--red);
+    padding:9px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;}
+  .reset-btn:hover{background:rgba(217,105,95,.08);}
+
+  /* Session summary */
+  .session-summary{
+    display:none; margin-top:18px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:16px 18px; max-width:420px;
+  }
+  .session-summary.show{display:block;}
+  .session-summary .ss-title{
+    font-family:'Fraunces',serif; font-size:16px; margin:0 0 12px; color:var(--text);
+  }
+  .session-summary .ss-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;
+  }
+  .session-summary .ss-cell{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  }
+  .session-summary .ss-cell .k{
+    font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--sub); margin-bottom:4px;
+  }
+  .session-summary .ss-cell .v{
+    font-family:'Fraunces',serif; font-size:18px; color:var(--text);
+  }
+  .session-summary .ss-cell.ess .v{color:var(--teal);}
+  .session-summary .ss-cell.disc .v{color:var(--amber);}
+  .session-summary .ss-full{
+    grid-column:1 / -1; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:8px; padding:10px 12px; margin-bottom:12px;
+  }
+  .session-summary .ss-full .k{
+    font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--sub); margin-bottom:4px;
+  }
+  .session-summary .ss-full .v{font-size:13px; color:var(--text); line-height:1.4;}
+  .session-summary .ss-prompt{
+    font-size:13px; color:var(--text); margin:0 0 12px; line-height:1.45;
+  }
+  .session-summary .ss-actions{display:flex; flex-wrap:wrap; gap:8px;}
+  .session-summary .ss-btn{
+    background:var(--teal); color:#0c1016; border:none; border-radius:8px;
+    padding:9px 14px; font-size:12px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif;
+    text-decoration:none; display:inline-flex; align-items:center;
+  }
+  .session-summary .ss-btn:hover{filter:brightness(1.08);}
+  .session-summary .ss-btn.ghost{
+    background:transparent; color:var(--sub); border:1px solid var(--line);
+  }
+  .session-summary .ss-btn.ghost:hover{color:var(--text); border-color:var(--sub);}
+  .session-summary.till-ss{max-width:480px; margin:16px 0 0;}
+</style>
+</head>
+<body>
+
+<h1>BAV — try the hard split</h1>
+<p class="sub">Not another tracker. Two pots: rent-safe money and spending money. The demo declines anything that would empty the spending pot early. No real money, no bank details.</p>
+<p class="sub" id="conn-status" style="font-weight:600; margin-top:-14px;"></p>
+<p class="sub feedback-line" style="margin-top:-12px;">Early demo. <a href="about/index.html#feedback">Give feedback</a> · <a href="about/index.html#tester">Join the tester list</a></p>
+
+<div id="intro-guide" style="max-width:420px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:22px; font-size:13px; line-height:1.55; color:var(--text);">
+  <div style="font-weight:600; margin-bottom:8px; color:var(--teal);">How to feel the point in 2 minutes</div>
+  <ol style="margin:0; padding-left:18px; color:var(--sub);">
+    <li style="margin-bottom:6px;">Set your <b style="color:var(--text)">next loan date</b> (or keep the example) on the Wallet Card.</li>
+    <li style="margin-bottom:6px;">Switch to <b style="color:var(--text)">Till</b>, scan a big discretionary item (headphones, trainers, night out), request payment.</li>
+    <li style="margin-bottom:6px;">On the Wallet Card, try to pay — watch the warning or the automatic decline.</li>
+  </ol>
+  <p style="margin:10px 0 0; color:var(--sub); font-size:12px;">One device is enough: toggle Wallet Card ↔ Till at the top. Two devices (laptop + phone) give the live handoff.</p>
+</div>
+
+<div id="setup-banner" style="display:none; max-width:420px; background:rgba(217,105,95,.08); border:1px solid rgba(217,105,95,.4); border-radius:10px; padding:14px 16px; margin-bottom:20px; font-size:12.5px; color:var(--text); line-height:1.6;">
+  <b style="color:var(--red);">Not set up yet.</b> Open this file in a text editor, find <code>FIREBASE_URL</code> near the top of the script, and replace the placeholder with your own Firebase Realtime Database URL.
+</div>
+
+<details class="session-box" id="session-box">
+  <summary>
+    <span class="s-label">Your demo session</span>
+    <span class="s-code" id="session-code">------</span>
+    <span class="s-hint">Pair a second device</span>
+  </summary>
+  <div class="s-body">
+    <div class="s-pair">
+      <div class="s-qr" id="qr-wrap"><div id="qr" role="img" aria-label="QR code that opens this demo session"></div></div>
+      <div class="s-info">
+        <p>To use a second device, scan this code with its camera. No camera? Open the demo there, choose <b>Join with a code</b> and type:</p>
+        <p class="s-big" id="session-code-big">------</p>
+        <button type="button" class="s-btn" id="copy-link">Copy session link</button><span class="s-copied" id="copy-msg" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+    <form class="s-join" id="join-form">
+      <label for="join-code">Join with a code</label>
+      <div class="s-row"><input id="join-code" type="text" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7QF2M"><button type="submit" class="s-btn">Join</button></div>
+      <p class="s-msg" id="join-msg" role="status" aria-live="polite"></p>
+    </form>
+    <p class="s-fine">Each visit gets its own session with its own random code, so other people testing at the same time never see your changes. What you enter is stored under that code only so your screens can sync. Please use made-up details.</p>
+  </div>
+</details>
+
+<div class="mode-toggle">
+  <button class="mode-btn active" id="btn-mode-card" onclick="setMode('card')">Wallet Card</button>
+  <button class="mode-btn" id="btn-mode-till" onclick="setMode('till')">Till</button>
+</div>
+
+<!-- ================= CARD VIEW ================= -->
+<div class="view active" id="view-card">
+
+  <div class="frozen-overlay" id="frozen-overlay">
+    <div class="ficon">🔒</div>
+    <div class="ftitle">Card frozen</div>
+    <div class="fdesc">Three declined attempts in a row were detected. This is a security pause, not a lock-out — you're always in control of your own card.</div>
+    <button class="unlock-btn" onclick="unlockCard()">Unlock my card</button>
+  </div>
+
+  <div class="tap-overlay" id="tap-overlay">
+    <div class="desc" id="tap-desc">Payment requested by the till</div>
+    <div class="amt" id="tap-amount">£0.00</div>
+    <div class="reflection-note" id="reflection-note"></div>
+    <div class="tap-ring" id="tap-ring" onclick="tapToPay()">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--teal)">
+        <path d="M6 12a6 6 0 0 1 12 0" stroke-opacity="0.5"/>
+        <path d="M8.5 12a3.5 3.5 0 0 1 7 0" stroke-opacity="0.8"/>
+        <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>
+      </svg>
+    </div>
+    <button class="tap-btn" id="tap-btn" onclick="tapToPay()">Tap to Pay</button>
+    <button class="decline-link" id="decline-btn" onclick="declinePayment()">Decline this payment</button>
+    <div class="tap-processing" id="tap-processing">Processing…</div>
+  </div>
+
+  <div class="wallet-tabs">
+    <button class="wtab ess active" id="wtab-ess" onclick="setWallet('essential')">Rent &amp; essentials</button>
+    <button class="wtab disc" id="wtab-disc" onclick="setWallet('discretionary')">Spending money</button>
+  </div>
+
+  <div class="card ess" id="card-el">
+    <svg class="card-skyline" id="card-skyline-ess" width="150" height="110" viewBox="0 0 150 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="18" y="40" width="10" height="60" fill="#ffffff"/>
+      <rect x="122" y="40" width="10" height="60" fill="#ffffff"/>
+      <path d="M18 40 L28 24 L18 24 Z" fill="#ffffff"/>
+      <path d="M132 40 L122 24 L132 24 Z" fill="#ffffff"/>
+      <path d="M28 46 Q75 20 122 46" stroke="#ffffff" stroke-width="2" fill="none"/>
+      <path d="M28 60 Q75 90 122 60" stroke="#ffffff" stroke-width="2" fill="none"/>
+      <rect x="0" y="98" width="150" height="4" fill="#ffffff"/>
+    </svg>
+    <div class="card-top">
+      <div class="brand"><span class="mark">▲</span>BAV</div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+        <div class="region-tag">GBP · UK</div>
+        <svg class="contactless" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" style="opacity:.85">
+          <path d="M6 12a6 6 0 0 1 12 0" stroke-opacity=".5"/>
+          <path d="M8.5 12a3.5 3.5 0 0 1 7 0" stroke-opacity=".8"/>
+          <circle cx="12" cy="12" r="1.4" fill="#ffffff" stroke="none"/>
+        </svg>
+      </div>
+    </div>
+    <div class="card-mid">
+      <div>
+        <div class="chip"></div>
+        <div class="wallet-label" id="card-tag" style="margin-top:8px;">Rent &amp; essentials (protected)</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="bal-label" style="font-size:9px; color:var(--sub); text-transform:uppercase; letter-spacing:.06em;">Balance</div>
+        <div class="bal-value" id="card-balance">£0.00</div>
+      </div>
+    </div>
+    <div class="card-number" id="card-number">•••• •••• •••• 4900</div>
+    <div class="card-bottom">
+      <div class="valid-thru">Valid thru<b>04/29</b></div>
+      <div class="card-brand-foot"><div class="vc">BAV</div><div class="vs">Demo card</div></div>
+    </div>
+  </div>
+
+  <div class="token-box">
+    <div class="token-id"><span class="pulse-dot"></span><span id="token-id-text">ID-STUDENT-ALPHA-7712</span></div>
+    <div class="token-note">Synced with the till automatically.</div>
+  </div>
+
+  <div class="settings-box">
+    <label class="settings-row">
+      <input type="checkbox" id="notify-toggle" onchange="saveNotifySettings()">
+      Notify a trusted contact for spending-money purchases over £20
+    </label>
+    <input type="text" class="contact-input" id="notify-contact" placeholder="Made-up name for the demo (e.g. Friend)" maxlength="40" onchange="saveNotifySettings()">
+    <div class="settings-note">Optional, off by default. Only for spending money above the threshold. In this demo nobody is contacted — use a made-up name.</div>
+  </div>
+
+  <div class="loan-date-box">
+    <div style="font-size:12px; font-weight:600; color:var(--text); margin-bottom:10px;">Make it about your term</div>
+    <label for="loan-date-input">Next loan payment date</label>
+    <input type="date" class="date-input" id="loan-date-input" onchange="saveLoanDate()">
+    <label for="bill-amount-input" style="margin-top:12px;">Upcoming essential bill (optional — e.g. rent)</label>
+    <div class="bill-row">
+      <input type="number" class="date-input" id="bill-amount-input" placeholder="Amount (£)" min="0" step="0.01" onchange="saveLoanDate()">
+      <input type="date" class="date-input" id="bill-date-input" onchange="saveLoanDate()">
+    </div>
+    <div class="reserve-note" id="reserve-note" style="display:none;"></div>
+    <div class="safe-spend" id="safe-spend-box" style="display:none;">
+      <div class="amt" id="safe-spend-amt">£0.00</div>
+      <div class="lbl" id="safe-spend-lbl">safe to spend per day from essentials (after bills reserved)</div>
+    </div>
+  </div>
+
+  <details class="security-details">
+    <summary>How is my security protected?</summary>
+    <div class="sec-body">
+      This demo never touches a real bank account. If BAV became real: <b>no bank logins or passwords would ever be stored</b> by BAV. Access would go through <b>UK Open Banking</b> — a regulated standard that many UK banks and apps already use, designed for read-only, revocable access — never screen-scraping or password storage. You could revoke access at any time from your own bank's app.
+    </div>
+  </details>
+
+  <div class="last-tx" id="card-last-tx"></div>
+
+  <div class="session-summary" id="session-summary-card">
+    <div class="ss-title">Session so far</div>
+    <div class="ss-grid">
+      <div class="ss-cell ess">
+        <div class="k">Essentials left</div>
+        <div class="v" id="ss-ess">£0.00</div>
+      </div>
+      <div class="ss-cell disc">
+        <div class="k">Spending left</div>
+        <div class="v" id="ss-disc">£0.00</div>
+      </div>
+    </div>
+    <div class="ss-full">
+      <div class="k">Until next payment</div>
+      <div class="v" id="ss-days">Set a next loan date above to see days remaining</div>
+    </div>
+    <p class="ss-prompt" id="ss-prompt">Would this hard split have changed how you spent last term?</p>
+    <div class="ss-actions">
+      <a class="ss-btn" href="about/index.html#feedback">Give 1-minute feedback</a>
+      <button type="button" class="ss-btn ghost" id="ss-dismiss-card" onclick="dismissSummary()">Keep trying</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TILL VIEW ================= -->
+<div class="view" id="view-till" style="max-width:480px;">
+  <div class="till-h">Retail counter</div>
+  <div class="till-sub">Scan items, then request payment. To feel the point: add a large spending-money item (headphones, trainers) and watch what happens when it exceeds the pot.</div>
+
+  <div class="frozen-banner" id="till-frozen-banner">This card is currently frozen after repeated declines. The student needs to unlock it on their phone before another payment can be requested.</div>
+
+  <div class="cat-label">Groceries · Essential</div>
+  <div class="item-grid" id="grid-groceries"></div>
+
+  <div class="cat-label">Books &amp; Transport · Essential</div>
+  <div class="item-grid" id="grid-essentials-other"></div>
+
+  <div class="cat-label">Clothing, Tech &amp; Leisure · Spending money (capped)</div>
+  <div class="item-grid" id="grid-discretionary"></div>
+
+  <div class="basket-box">
+    <div id="basket-normal">
+      <div class="basket-h">
+        <div class="t">Basket</div>
+        <button class="clear" onclick="clearBasket()">Clear</button>
+      </div>
+      <div id="basket-lines"><div class="basket-empty">No items scanned yet.</div></div>
+      <div class="basket-total"><span>Total</span><span id="basket-total-val">£0.00</span></div>
+      <button class="pay-btn" id="pay-btn" onclick="requestPayment()" disabled>Request Payment</button>
+    </div>
+    <div class="waiting-box" id="waiting-box">
+      <div class="spinner"></div>
+      <div class="wtxt" id="waiting-text">Waiting for card tap…</div>
+      <div class="wamt" id="waiting-amt">£0.00</div>
+      <button class="cancel-btn" onclick="cancelPayment()">Cancel</button>
+    </div>
+  </div>
+
+  <div class="ledger-summary">
+    <div class="lbl">Total remaining</div>
+    <div class="total" id="till-total">£0.00</div>
+    <div class="cap-line">Spending money used: <span id="till-disc-spend">£0.00 / £60.00</span></div>
+  </div>
+
+  <div class="session-summary till-ss" id="session-summary-till">
+    <div class="ss-title">Session so far</div>
+    <div class="ss-grid">
+      <div class="ss-cell ess">
+        <div class="k">Essentials left</div>
+        <div class="v" id="ss-ess-till">£0.00</div>
+      </div>
+      <div class="ss-cell disc">
+        <div class="k">Spending left</div>
+        <div class="v" id="ss-disc-till">£0.00</div>
+      </div>
+    </div>
+    <div class="ss-full">
+      <div class="k">Until next payment</div>
+      <div class="v" id="ss-days-till">Set a next loan date on the Wallet Card</div>
+    </div>
+    <p class="ss-prompt">Would this hard split have changed how you spent last term?</p>
+    <div class="ss-actions">
+      <a class="ss-btn" href="about/index.html#feedback">Give 1-minute feedback</a>
+      <button type="button" class="ss-btn ghost" onclick="dismissSummary()">Keep trying</button>
+    </div>
+  </div>
+
+  <div class="terminal" id="terminal"><span class="sys">System online. Scan items to begin.</span></div>
+
+  <button class="reset-btn" onclick="resetLedger()">Reset this demo session</button>
+</div>
+
+<script>
+/* QR Code Generator for JavaScript. Copyright (c) 2009 Kazuhiko Arase. Licensed under the MIT license:
+   http://www.opensource.org/licenses/mit-license.php  (URL: http://www.d-project.com/)
+   The word 'QR Code' is a registered trademark of DENSO WAVE INCORPORATED. */
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1})},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(o*r,n*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}(function(){return qrcode});
+</script>
+<script>
+const DEFAULT_STATE = {
+  identity_ref: "ID-STUDENT-ALPHA-7712",
+  essential_balance_pence: 14000,
+  discretionary_balance_pence: 6000,
+  discretionary_cap_pence: 6000,
+  cumulative_discretionary_spend_pence: 0,
+  last_tx: null,
+  pending_payment: null,
+  decline_streak: 0,
+  card_frozen: false,
+  notify_settings: { enabled: false, contact: '' },
+  next_payment_date: null,
+  next_essential_bill: { amount_pence: 0, due_date: null },
+  tx_count: 0,
+  summary_dismissed: false
+};
+
+const DISCRETIONARY_ALERT_THRESHOLD_PENCE = 2000; // £20 — student-set in a real build
+const REFLECTION_THRESHOLD_PCT = 30; // nudge shown when a purchase eats this much of the remaining discretionary pot
+
+// UK-store-style catalog. wallet: 'essential' | 'discretionary'
+const CATALOG = {
+  groceries: [
+    { name: 'Semi-Skimmed Milk 2pt', price: 155, wallet: 'essential' },
+    { name: 'Wholemeal Bread 800g', price: 120, wallet: 'essential' },
+    { name: 'Free Range Eggs (6)', price: 210, wallet: 'essential' },
+    { name: 'Bananas, loose (per kg)', price: 89, wallet: 'essential' },
+    { name: 'Chicken Breast Fillets 640g', price: 450, wallet: 'essential' },
+    { name: 'Baked Beans, 4-pack', price: 180, wallet: 'essential' },
+    { name: 'Penne Pasta 500g', price: 95, wallet: 'essential' },
+    { name: 'Basmati Rice 1kg', price: 210, wallet: 'essential' }
+  ],
+  essentials_other: [
+    { name: 'Course Textbook', price: 4500, wallet: 'essential' },
+    { name: 'A4 Notebook, pack of 3', price: 350, wallet: 'essential' },
+    { name: 'Oyster/Bus Day Pass', price: 520, wallet: 'essential' },
+    { name: 'Printer Paper, 500 sheets', price: 499, wallet: 'essential' }
+  ],
+  discretionary: [
+    { name: 'Graphic T-Shirt', price: 1200, wallet: 'discretionary' },
+    { name: 'Trainers', price: 4500, wallet: 'discretionary' },
+    { name: 'Bluetooth Headphones', price: 2999, wallet: 'discretionary' },
+    { name: 'Takeaway Coffee', price: 320, wallet: 'discretionary' },
+    { name: 'Cinema Ticket', price: 1150, wallet: 'discretionary' },
+    { name: 'Takeaway Pizza', price: 899, wallet: 'discretionary' },
+    { name: 'Phone Case', price: 799, wallet: 'discretionary' },
+    { name: 'Magazine', price: 450, wallet: 'discretionary' }
+  ]
+};
+
+const CARD_NUMBERS = {
+  essential: '•••• •••• •••• 4900',
+  discretionary: '•••• •••• •••• 3344'
+};
+
+let mode = 'card';
+let walletView = 'essential';
+let basket = []; // { name, price, wallet }
+let audioCtx = null;
+let tillAwaiting = false;
+// Only the screen that requested a payment settles it. Without this, whichever device
+// polled first (often the phone) would settle it, and the till would never log the result.
+let myRequestId = null;
+try{ myRequestId = +sessionStorage.getItem('bav_req_' + SESSION.code) || null; }catch(e){}
+let processingPayment = false;
+let notifySettingsLoaded = false;
+let loanDateLoaded = false;
+
+function daysUntil(dateStr){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(dateStr + 'T00:00:00');
+  return Math.ceil((target - today) / 86400000);
+}
+
+function computeDailySafeSpend(state){
+  if(!state.next_payment_date) return null;
+  const daysLeft = daysUntil(state.next_payment_date);
+  if(daysLeft <= 0) return { expired: true };
+
+  const bill = state.next_essential_bill;
+  if(bill && bill.amount_pence > 0 && bill.due_date){
+    const billDaysLeft = daysUntil(bill.due_date);
+    if(billDaysLeft > 0){
+      // A bill is still upcoming before the next payment lands — reserve it first,
+      // then spread only what's left over the days until that bill is due.
+      const spendable = state.essential_balance_pence - bill.amount_pence;
+      if(spendable <= 0){
+        return { insufficientForBill: true, shortfall: -spendable, billDaysLeft, billAmount: bill.amount_pence };
+      }
+      const perDayPence = Math.floor(spendable / billDaysLeft);
+      return { perDayPence, daysLeft: billDaysLeft, expired: false, reservedForBill: bill.amount_pence, billDaysLeft };
+    }
+  }
+
+  const perDayPence = Math.floor(state.essential_balance_pence / daysLeft);
+  return { perDayPence, daysLeft, expired: false };
+}
+
+function formatDateShort(iso){
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function setMode(m){
+  mode = m;
+  document.getElementById('view-card').classList.toggle('active', m === 'card');
+  document.getElementById('view-till').classList.toggle('active', m === 'till');
+  document.getElementById('btn-mode-card').classList.toggle('active', m === 'card');
+  document.getElementById('btn-mode-till').classList.toggle('active', m === 'till');
+}
+
+function setWallet(w){
+  walletView = w;
+  document.getElementById('wtab-ess').classList.toggle('active', w === 'essential');
+  document.getElementById('wtab-disc').classList.toggle('active', w === 'discretionary');
+  render();
+}
+
+// ---------- sound ----------
+function ctx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function scanBeep(){
+  const ac = ctx();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.connect(gain); gain.connect(ac.destination);
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(1500, ac.currentTime);
+  gain.gain.setValueAtTime(0.05, ac.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.08);
+  osc.start(); osc.stop(ac.currentTime + 0.08);
+}
+function tapChirp(){
+  const ac = ctx();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.connect(gain); gain.connect(ac.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1100, ac.currentTime);
+  gain.gain.setValueAtTime(0.06, ac.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.12);
+  osc.start(); osc.stop(ac.currentTime + 0.12);
+}
+function paySuccessTone(){
+  const ac = ctx();
+  [880, 1320].forEach((freq, i) => {
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.frequency.setValueAtTime(freq, ac.currentTime + i*0.09);
+    gain.gain.setValueAtTime(0.07, ac.currentTime + i*0.09);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + i*0.09 + 0.15);
+    osc.start(ac.currentTime + i*0.09); osc.stop(ac.currentTime + i*0.09 + 0.15);
+  });
+}
+function payDeclineTone(){
+  const ac = ctx();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.connect(gain); gain.connect(ac.destination);
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(160, ac.currentTime);
+  gain.gain.setValueAtTime(0.09, ac.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.35);
+  osc.start(); osc.stop(ac.currentTime + 0.35);
+}
+function freezeTone(){
+  const ac = ctx();
+  [420, 300, 200].forEach((freq, i) => {
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, ac.currentTime + i*0.14);
+    gain.gain.setValueAtTime(0.08, ac.currentTime + i*0.14);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + i*0.14 + 0.13);
+    osc.start(ac.currentTime + i*0.14); osc.stop(ac.currentTime + i*0.14 + 0.13);
+  });
+}
+
+// ---------- storage (Firebase Realtime Database) ----------
+// PASTE YOUR FIREBASE DATABASE URL BELOW — see setup steps. No trailing slash.
+const FIREBASE_URL = "https://bav-demo2uk-default-rtdb.europe-west1.firebasedatabase.app";
+
+const FIREBASE_CONFIGURED = !FIREBASE_URL.includes("REPLACE-ME");
+// ---- Sessions: every visit gets its own ledger, found by a short code in the URL (#s=CODE) ----
+const SESSION_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L, so codes are easy to read out
+function makeSessionCode(){
+  const n = new Uint32Array(6); crypto.getRandomValues(n);
+  let c = ''; for(let i = 0; i < 6; i++){ c += SESSION_ALPHABET[n[i] % SESSION_ALPHABET.length]; }
+  return c;
+}
+function cleanCode(v){ return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10); }
+function resolveSession(){
+  const m = location.hash.match(/[#&]s=([A-Za-z0-9]+)/);
+  const fromUrl = m ? cleanCode(m[1]) : '';
+  if(fromUrl.length >= 4){ return { code: fromUrl, fresh: false }; }
+  const code = makeSessionCode();
+  try{ history.replaceState(null, '', location.pathname + location.search + '#s=' + code); }catch(e){}
+  return { code: code, fresh: true };
+}
+const SESSION = resolveSession();
+const SESSION_LINK = location.href.split('#')[0] + '#s=' + SESSION.code;
+const DB_PATH = `${FIREBASE_URL}/bav_sessions/${SESSION.code}.json`;
+let connectionOk = null; // true = firebase, false = offline local, null = unknown
+let offlineMode = false;
+let memoryState = null; // always keep last known state so polls do not reset balances
+const LOCAL_KEY = 'bav_session_' + SESSION.code;
+
+function setConnStatus(ok, offline){
+  connectionOk = ok;
+  if(offline) offlineMode = true;
+  const el = document.getElementById('conn-status');
+  if(!el) return;
+  if(ok){
+    el.textContent = 'Connected';
+    el.style.color = 'var(--teal)';
+  } else if(offlineMode){
+    el.textContent = 'Offline mode — works on this device';
+    el.style.color = 'var(--amber)';
+  } else {
+    el.textContent = 'Connection error';
+    el.style.color = 'var(--red)';
+  }
+}
+
+function mergeState(data){
+  const merged = { ...DEFAULT_STATE, ...data };
+  merged.notify_settings = { ...DEFAULT_STATE.notify_settings, ...(data && data.notify_settings ? data.notify_settings : {}) };
+  merged.next_essential_bill = { ...DEFAULT_STATE.next_essential_bill, ...(data && data.next_essential_bill ? data.next_essential_bill : {}) };
+  return merged;
+}
+
+function readLocalState(){
+  try{
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if(!raw) return null;
+    return mergeState(JSON.parse(raw));
+  }catch(e){ return null; }
+}
+
+function writeLocalState(state){
+  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(state)); }catch(e){}
+  memoryState = state;
+}
+
+async function getState(){
+  // Prefer in-memory so 2s polls never wipe a payment just made offline
+  if(memoryState) return mergeState(memoryState);
+
+  if(!FIREBASE_CONFIGURED || offlineMode){
+    const local = readLocalState();
+    if(local){ memoryState = local; setConnStatus(false, true); return local; }
+    const fresh = mergeState({});
+    writeLocalState(fresh);
+    setConnStatus(false, true);
+    return fresh;
+  }
+
+  try{
+    const res = await fetch(DB_PATH);
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    setConnStatus(true);
+    if(data === null){
+      const fresh = mergeState({});
+      await saveState(fresh);
+      return memoryState || fresh;
+    }
+    const merged = mergeState(data);
+    memoryState = merged;
+    writeLocalState(merged); // mirror for offline resilience
+    return merged;
+  }catch(e){
+    console.error('Read failed — switching to offline mode', e);
+    offlineMode = true;
+    const local = readLocalState();
+    if(local){ memoryState = local; setConnStatus(false, true); return local; }
+    const fresh = mergeState({});
+    writeLocalState(fresh);
+    setConnStatus(false, true);
+    return fresh;
+  }
+}
+
+async function saveState(state){
+  const now = Date.now();
+  if(!state.created_at) state.created_at = now;
+  state.last_active = now;
+  memoryState = state;
+  writeLocalState(state);
+
+  if(!FIREBASE_CONFIGURED || offlineMode){
+    setConnStatus(false, true);
+    return;
+  }
+
+  try{
+    const res = await fetch(DB_PATH, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state)
+    });
+    if(!res.ok) throw new Error('bad response');
+    setConnStatus(true);
+  }catch(e){
+    console.error('Storage write failed — staying in offline mode', e);
+    offlineMode = true;
+    setConnStatus(false, true);
+    // Do not spam the terminal on every poll; one note is enough
+    if(!saveState._offlineLogged){
+      saveState._offlineLogged = true;
+      log('Working offline on this device. Multi-device pairing needs a connection.', false, false, true);
+    }
+  }
+}
+
+function fmt(pence){ return '£' + (pence/100).toFixed(2); }
+
+function log(msg, isErr, ok, warn){
+  const box = document.getElementById('terminal');
+  if(!box) return;
+  const line = document.createElement('div');
+  line.className = isErr ? 'err' : (ok ? 'ok' : (warn ? 'warn' : ''));
+  line.textContent = msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ---------- catalog rendering ----------
+function buildGrid(containerId, items){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  items.forEach((item) => {
+    const btn = document.createElement('button');
+    btn.className = 'item-card ' + (item.wallet === 'essential' ? 'ess' : 'disc');
+    btn.innerHTML = `<div class="nm">${item.name}</div><div class="pr">${fmt(item.price)}</div><span class="badge">${item.wallet}</span>`;
+    btn.onclick = () => scanItem(item);
+    el.appendChild(btn);
+  });
+}
+
+function scanItem(item){
+  scanBeep();
+  basket.push({...item});
+  log(`SCAN: ${item.name} — ${fmt(item.price)}`);
+  renderBasket();
+}
+
+function clearBasket(){
+  basket = [];
+  renderBasket();
+}
+
+function renderBasket(){
+  const normalBox = document.getElementById('basket-normal');
+  const waitBox = document.getElementById('waiting-box');
+  if(tillAwaiting){
+    normalBox.style.display = 'none';
+    waitBox.classList.add('show');
+    return;
+  }
+  normalBox.style.display = 'block';
+  waitBox.classList.remove('show');
+
+  const linesEl = document.getElementById('basket-lines');
+  const payBtn = document.getElementById('pay-btn');
+  if(basket.length === 0){
+    linesEl.innerHTML = '<div class="basket-empty">No items scanned yet.</div>';
+    payBtn.disabled = true;
+  } else {
+    linesEl.innerHTML = '';
+    basket.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'basket-line';
+      row.innerHTML = `<span>${item.name}</span><span>${fmt(item.price)}<span class="rm" onclick="removeItem(${idx})">remove</span></span>`;
+      linesEl.appendChild(row);
+    });
+    payBtn.disabled = false;
+  }
+  const total = basket.reduce((sum, i) => sum + i.price, 0);
+  document.getElementById('basket-total-val').textContent = fmt(total);
+}
+
+function removeItem(idx){
+  basket.splice(idx, 1);
+  renderBasket();
+}
+
+// ---------- notify settings (card side, opt-in) ----------
+async function saveNotifySettings(){
+  const enabled = document.getElementById('notify-toggle').checked;
+  const contact = document.getElementById('notify-contact').value.trim();
+  const state = await getState();
+  state.notify_settings = { enabled, contact };
+  await saveState(state);
+}
+
+async function saveLoanDate(){
+  const dateVal = document.getElementById('loan-date-input').value || null;
+  const billAmountRaw = document.getElementById('bill-amount-input').value;
+  const billDateVal = document.getElementById('bill-date-input').value || null;
+  const state = await getState();
+  state.next_payment_date = dateVal;
+  state.next_essential_bill = {
+    amount_pence: billAmountRaw ? Math.round(parseFloat(billAmountRaw) * 100) : 0,
+    due_date: billDateVal
+  };
+  await saveState(state);
+}
+
+// ---------- payment: till requests, card taps to approve ----------
+async function requestPayment(){
+  if(basket.length === 0) return;
+  const state = await getState();
+
+  if(state.card_frozen){
+    log('Cannot request payment — card is frozen until the student unlocks it.', true);
+    return;
+  }
+
+  const essTotal = basket.filter(i => i.wallet === 'essential').reduce((s,i) => s+i.price, 0);
+  const discTotal = basket.filter(i => i.wallet === 'discretionary').reduce((s,i) => s+i.price, 0);
+
+  const requestId = Date.now();
+  myRequestId = requestId;
+  try{ sessionStorage.setItem('bav_req_' + SESSION.code, String(requestId)); }catch(e){}
+
+  state.pending_payment = {
+    status: 'awaiting_tap',
+    items: basket.map(i => ({ name: i.name, price: i.price, wallet: i.wallet })),
+    essTotal, discTotal,
+    total: essTotal + discTotal,
+    requestId: requestId
+  };
+  await saveState(state);
+
+  tillAwaiting = true;
+  document.getElementById('waiting-text').textContent = 'Waiting for card tap…';
+  document.getElementById('waiting-amt').textContent = fmt(essTotal + discTotal);
+  renderBasket();
+  log(`--- Payment requested: ${basket.length} item(s), ${fmt(essTotal + discTotal)} — waiting for card tap ---`);
+}
+
+async function cancelPayment(){
+  const state = await getState();
+  if(state.pending_payment && (state.pending_payment.status === 'awaiting_tap' || state.pending_payment.status === 'confirm_discretionary')){
+    state.pending_payment = null;
+    await saveState(state);
+  }
+  tillAwaiting = false;
+  renderBasket();
+  log('Payment request cancelled.');
+}
+
+async function finalizePayment(state, pp){
+  const essOk = pp.essTotal === 0 || state.essential_balance_pence >= pp.essTotal;
+  const discProspective = state.cumulative_discretionary_spend_pence + pp.discTotal;
+  const discCapOk = discProspective <= state.discretionary_cap_pence;
+  const discBalOk = pp.discTotal === 0 || state.discretionary_balance_pence >= pp.discTotal;
+  const discOk = pp.discTotal === 0 || (discCapOk && discBalOk);
+
+  log(`--- Card presented: ${pp.items.length} item(s), ${fmt(pp.total)} total ---`);
+
+  if(essOk && discOk){
+    state.essential_balance_pence -= pp.essTotal;
+    state.discretionary_balance_pence -= pp.discTotal;
+    state.cumulative_discretionary_spend_pence = discProspective;
+    state.decline_streak = 0;
+    let notified = false;
+    if(pp.discTotal > DISCRETIONARY_ALERT_THRESHOLD_PENCE && state.notify_settings && state.notify_settings.enabled && state.notify_settings.contact){
+      notified = true;
+      log(`Alert sent to ${state.notify_settings.contact} — discretionary purchase over ${fmt(DISCRETIONARY_ALERT_THRESHOLD_PENCE)}`, false, false, true);
+    }
+    state.last_tx = {
+      approved: true,
+      items: pp.items.map(i => ({ name: i.name, amount: i.price })),
+      essTotal: pp.essTotal, discTotal: pp.discTotal,
+      notified, notifiedContact: notified ? state.notify_settings.contact : null
+    };
+    state.tx_count = (state.tx_count || 0) + 1;
+    state.summary_dismissed = false;
+    state.pending_payment = null;
+    await saveState(state);
+    paySuccessTone();
+    log(`APPROVED — essential ${fmt(pp.essTotal)}, discretionary ${fmt(pp.discTotal)}`, false, true);
+  } else {
+    let reason = [];
+    if(!essOk) reason.push('essential balance too low');
+    if(!discOk) reason.push(!discCapOk ? 'exceeds discretionary cap' : 'discretionary balance too low');
+    state.last_tx = { approved: false, items: pp.items.map(i => ({ name: i.name, amount: i.price })), reason: reason.join(', ') };
+    state.tx_count = (state.tx_count || 0) + 1;
+    state.summary_dismissed = false;
+    state.pending_payment = null;
+    state.decline_streak = (state.decline_streak || 0) + 1;
+
+    if(state.decline_streak >= 3){
+      state.card_frozen = true;
+      await saveState(state);
+      payDeclineTone();
+      log(`DECLINED — ${reason.join(', ')}`, true);
+      log('SECURITY: 3 declines in a row detected — card frozen automatically.', true);
+      freezeTone();
+    } else {
+      await saveState(state);
+      payDeclineTone();
+      log(`DECLINED — ${reason.join(', ')} (${state.decline_streak}/3 declines before auto-freeze)`, true);
+    }
+  }
+
+  basket = [];
+  tillAwaiting = false;
+  renderBasket();
+}
+
+async function tapToPay(){
+  if(processingPayment) return;
+  const state = await getState();
+  if(state.card_frozen) return;
+  const pp = state.pending_payment;
+  if(!pp) return;
+
+  if(pp.status === 'awaiting_tap'){
+    if(pp.discTotal > 0){
+      // Discretionary spend needs a deliberate second confirmation — essential-only stays one-tap.
+      tapChirp();
+      pp.status = 'confirm_discretionary';
+      await saveState(state);
+      return;
+    }
+    processingPayment = true;
+    tapChirp();
+    document.getElementById('tap-processing').classList.add('show');
+    pp.status = 'card_presented';
+    await saveState(state);
+    setTimeout(() => { processingPayment = false; }, 1500);
+    return;
+  }
+
+  if(pp.status === 'confirm_discretionary'){
+    processingPayment = true;
+    tapChirp();
+    document.getElementById('tap-processing').classList.add('show');
+    pp.status = 'card_presented';
+    await saveState(state);
+    setTimeout(() => { processingPayment = false; }, 1500);
+  }
+}
+
+async function declinePayment(){
+  if(processingPayment) return;
+  const state = await getState();
+  const pp = state.pending_payment;
+  if(!pp || (pp.status !== 'awaiting_tap' && pp.status !== 'confirm_discretionary')) return;
+  payDeclineTone();
+  pp.status = 'declined_by_card';
+  await saveState(state);
+}
+
+async function unlockCard(){
+  const state = await getState();
+  state.card_frozen = false;
+  state.decline_streak = 0;
+  await saveState(state);
+  log('Card unlocked by student.', false, true);
+}
+
+async function resetLedger(){
+  summaryDismissedLocal = false;
+  memoryState = null;
+  try{ localStorage.removeItem(LOCAL_KEY); }catch(e){}
+  await saveState(mergeState({}));
+  basket = [];
+  tillAwaiting = false;
+  notifySettingsLoaded = false;
+  loanDateLoaded = false;
+  renderBasket();
+  const term = document.getElementById('terminal');
+  if(term) term.innerHTML = '<span class="sys">Ledger reset. System online.</span>';
+  render();
+}
+
+// ---------- session summary ----------
+let summaryDismissedLocal = false;
+
+function dismissSummary(){
+  summaryDismissedLocal = true;
+  document.getElementById('session-summary-card').classList.remove('show');
+  document.getElementById('session-summary-till').classList.remove('show');
+  // Persist dismiss for this session so it does not keep popping after every poll
+  getState().then(state => {
+    state.summary_dismissed = true;
+    saveState(state);
+  }).catch(() => {});
+}
+
+function buildDaysLine(state){
+  if(!state.next_payment_date){
+    return 'Set a next loan date to see days remaining';
+  }
+  const calc = computeDailySafeSpend(state);
+  if(!calc){
+    return 'Set a next loan date to see days remaining';
+  }
+  if(calc.expired){
+    return 'Payment date has passed — update it on the Wallet Card';
+  }
+  if(calc.insufficientForBill){
+    return calc.billDaysLeft + ' day' + (calc.billDaysLeft === 1 ? '' : 's') + ' to bill, but essentials cannot cover it yet';
+  }
+  const days = calc.daysLeft;
+  const safe = fmt(calc.perDayPence);
+  if(calc.reservedForBill){
+    return days + ' day' + (days === 1 ? '' : 's') + ' left · about ' + safe + '/day safe after bill reserved';
+  }
+  return days + ' day' + (days === 1 ? '' : 's') + ' left · about ' + safe + '/day safe to spend from essentials';
+}
+
+function updateSessionSummary(state){
+  const show = ((state.tx_count || 0) > 0 || !!state.last_tx) && !state.summary_dismissed && !summaryDismissedLocal;
+  const cardEl = document.getElementById('session-summary-card');
+  const tillEl = document.getElementById('session-summary-till');
+  if(!cardEl || !tillEl) return;
+
+  cardEl.classList.toggle('show', show);
+  tillEl.classList.toggle('show', show);
+  if(!show) return;
+
+  const ess = fmt(state.essential_balance_pence);
+  const disc = fmt(state.discretionary_balance_pence);
+  const daysLine = buildDaysLine(state);
+
+  document.getElementById('ss-ess').textContent = ess;
+  document.getElementById('ss-disc').textContent = disc;
+  document.getElementById('ss-days').textContent = daysLine;
+  document.getElementById('ss-ess-till').textContent = ess;
+  document.getElementById('ss-disc-till').textContent = disc;
+  document.getElementById('ss-days-till').textContent = daysLine;
+
+  // Prompt varies slightly after a decline vs only approvals
+  const promptEl = document.getElementById('ss-prompt');
+  if(promptEl){
+    if(state.last_tx && state.last_tx.approved === false){
+      promptEl.textContent = 'That decline is the point. Would a hard split like this have changed how you spent last term?';
+    } else {
+      promptEl.textContent = 'Essentials still protected. Would this hard split have changed how you spent last term?';
+    }
+  }
+}
+
+// ---------- render ----------
+async function render(){
+  const state = await getState();
+
+  const balance = walletView === 'essential' ? state.essential_balance_pence : state.discretionary_balance_pence;
+  document.getElementById('card-balance').textContent = fmt(balance);
+  document.getElementById('card-el').className = 'card ' + (walletView === 'essential' ? 'ess' : 'disc') + (state.card_frozen ? ' frozen' : '');
+  document.getElementById('card-tag').textContent = walletView === 'essential' ? 'Rent & essentials (protected)' : 'Spending money (capped)';
+  document.getElementById('card-number').textContent = CARD_NUMBERS[walletView];
+  document.getElementById('token-id-text').textContent = state.identity_ref;
+
+  if(!notifySettingsLoaded){
+    document.getElementById('notify-toggle').checked = !!(state.notify_settings && state.notify_settings.enabled);
+    document.getElementById('notify-contact').value = (state.notify_settings && state.notify_settings.contact) || '';
+    notifySettingsLoaded = true;
+  }
+  if(!loanDateLoaded){
+    document.getElementById('loan-date-input').value = state.next_payment_date || '';
+    const bill = state.next_essential_bill;
+    document.getElementById('bill-amount-input').value = (bill && bill.amount_pence > 0) ? (bill.amount_pence / 100).toFixed(2) : '';
+    document.getElementById('bill-date-input').value = (bill && bill.due_date) ? bill.due_date : '';
+    loanDateLoaded = true;
+  }
+
+  const safeSpendBox = document.getElementById('safe-spend-box');
+  const reserveNote = document.getElementById('reserve-note');
+  reserveNote.style.display = 'none';
+  reserveNote.classList.remove('warn');
+  if(walletView === 'essential'){
+    const calc = computeDailySafeSpend(state);
+    if(!calc){
+      safeSpendBox.style.display = 'none';
+    } else if(calc.expired){
+      safeSpendBox.style.display = 'block';
+      safeSpendBox.classList.add('expired');
+      document.getElementById('safe-spend-amt').textContent = 'Payment date has passed';
+      document.getElementById('safe-spend-lbl').textContent = 'update your next payment date above';
+    } else if(calc.insufficientForBill){
+      safeSpendBox.style.display = 'none';
+      reserveNote.style.display = 'block';
+      reserveNote.classList.add('warn');
+      reserveNote.textContent = `Your balance is ${fmt(calc.shortfall)} short of covering your ${fmt(calc.billAmount)} bill due in ${calc.billDaysLeft} day${calc.billDaysLeft === 1 ? '' : 's'} — nothing is safe to spend right now.`;
+    } else {
+      safeSpendBox.style.display = 'block';
+      safeSpendBox.classList.remove('expired');
+      document.getElementById('safe-spend-amt').textContent = fmt(calc.perDayPence) + '/day';
+      if(calc.reservedForBill){
+        document.getElementById('safe-spend-lbl').textContent =
+          `safe to spend for the next ${calc.daysLeft} day${calc.daysLeft === 1 ? '' : 's'}, after setting aside ${fmt(calc.reservedForBill)} for your upcoming bill`;
+      } else {
+        document.getElementById('safe-spend-lbl').textContent =
+          `safe to spend for the next ${calc.daysLeft} day${calc.daysLeft === 1 ? '' : 's'}, until your next payment lands`;
+      }
+    }
+  } else {
+    safeSpendBox.style.display = 'none';
+  }
+
+  const lastTxEl = document.getElementById('card-last-tx');
+  if(state.last_tx){
+    if(state.last_tx.approved){
+      const lines = state.last_tx.items.map(i => `${i.name} — ${fmt(i.amount)}`).join('<br>');
+      const alertLine = state.last_tx.notified ? `<div class="alert-line">Alert sent to ${state.last_tx.notifiedContact}</div>` : '';
+      lastTxEl.innerHTML = `Last payment approved:<div class="receipt-lines">${lines}</div>${alertLine}`;
+    } else {
+      lastTxEl.innerHTML = `Last payment <b style="color:var(--red)">declined</b> — ${state.last_tx.reason}`;
+    }
+  } else {
+    lastTxEl.textContent = '';
+  }
+
+  // Card view: frozen state takes priority over the tap overlay
+  const overlay = document.getElementById('tap-overlay');
+  const frozenOverlay = document.getElementById('frozen-overlay');
+  const pp = state.pending_payment;
+
+  if(state.card_frozen){
+    frozenOverlay.classList.add('show');
+    overlay.classList.remove('show');
+    document.getElementById('tap-processing').classList.remove('show');
+  } else {
+    frozenOverlay.classList.remove('show');
+    if(pp && pp.status === 'awaiting_tap'){
+      overlay.classList.add('show');
+      overlay.classList.remove('confirm-step');
+      document.getElementById('tap-desc').textContent = 'Payment requested by the till';
+      document.getElementById('tap-amount').textContent = fmt(pp.total);
+      document.getElementById('tap-ring').classList.remove('amber');
+      document.getElementById('tap-btn').classList.remove('amber');
+      document.getElementById('tap-btn').textContent = 'Tap to Pay';
+      document.getElementById('tap-processing').classList.remove('show');
+      document.getElementById('reflection-note').classList.remove('show');
+    } else if(pp && pp.status === 'confirm_discretionary'){
+      overlay.classList.add('show', 'confirm-step');
+      document.getElementById('tap-desc').textContent = 'This includes a discretionary purchase — confirm to proceed';
+      document.getElementById('tap-amount').textContent = fmt(pp.total);
+      document.getElementById('tap-ring').classList.add('amber');
+      document.getElementById('tap-btn').classList.add('amber');
+      document.getElementById('tap-btn').textContent = 'Confirm Discretionary Spend';
+      document.getElementById('tap-processing').classList.remove('show');
+
+      const reflectionEl = document.getElementById('reflection-note');
+      const remainingBeforeThis = state.discretionary_balance_pence;
+      if(remainingBeforeThis > 0){
+        const pct = Math.round((pp.discTotal / remainingBeforeThis) * 100);
+        if(pct >= REFLECTION_THRESHOLD_PCT){
+          reflectionEl.textContent = `Heads up — this is about ${pct}% of what's left in your fun-money pot right now. Still want to go ahead?`;
+          reflectionEl.classList.add('show');
+        } else {
+          reflectionEl.classList.remove('show');
+        }
+      } else {
+        reflectionEl.classList.remove('show');
+      }
+    } else if(pp && pp.status === 'card_presented'){
+      // keep processing state visible until till clears it
+    } else {
+      overlay.classList.remove('show');
+      document.getElementById('tap-processing').classList.remove('show');
+      document.getElementById('reflection-note').classList.remove('show');
+    }
+  }
+
+  // Till view: totals + handle pending payment lifecycle
+  const total = state.essential_balance_pence + state.discretionary_balance_pence;
+  document.getElementById('till-total').textContent = fmt(total);
+  document.getElementById('till-disc-spend').textContent =
+    fmt(state.cumulative_discretionary_spend_pence) + ' / ' + fmt(state.discretionary_cap_pence);
+
+  document.getElementById('till-frozen-banner').classList.toggle('show', !!state.card_frozen);
+  document.getElementById('pay-btn').disabled = state.card_frozen || basket.length === 0;
+
+  if(pp && (pp.status === 'awaiting_tap' || pp.status === 'confirm_discretionary') && !tillAwaiting){
+    tillAwaiting = true;
+    document.getElementById('waiting-text').textContent = pp.status === 'confirm_discretionary'
+      ? 'Waiting for discretionary confirmation…' : 'Waiting for card tap…';
+    document.getElementById('waiting-amt').textContent = fmt(pp.total);
+    renderBasket();
+  } else if(pp && pp.status === 'confirm_discretionary' && tillAwaiting){
+    document.getElementById('waiting-text').textContent = 'Waiting for discretionary confirmation…';
+  } else if(pp && pp.status === 'card_presented' && !processingPayment && pp.requestId === myRequestId){
+    processingPayment = true;
+    await finalizePayment(state, pp);
+    processingPayment = false;
+  } else if(pp && pp.status === 'declined_by_card' && !processingPayment && pp.requestId === myRequestId){
+    processingPayment = true;
+    log(`--- Payment declined by the student on their card — ${fmt(pp.total)} ---`, true);
+    state.pending_payment = null;
+    state.last_tx = { approved: false, items: pp.items.map(i => ({ name: i.name, amount: i.price })), reason: 'declined by student' };
+    state.tx_count = (state.tx_count || 0) + 1;
+    state.summary_dismissed = false;
+    await saveState(state);
+    basket = [];
+    tillAwaiting = false;
+    renderBasket();
+    processingPayment = false;
+  } else if(!pp && tillAwaiting){
+    tillAwaiting = false;
+    renderBasket();
+  }
+
+  updateSessionSummary(state);
+}
+
+
+// ---------- session pairing UI ----------
+(function initSessionUI(){
+  const $ = id => document.getElementById(id);
+  $('session-code').textContent = SESSION.code;
+  $('session-code-big').textContent = SESSION.code;
+  if(SESSION.fresh) $('session-box').open = true;
+
+  try{
+    const qr = qrcode(0, 'M'); qr.addData(SESSION_LINK); qr.make();
+    $('qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+  }catch(e){ $('qr-wrap').style.display = 'none'; }
+
+  $('copy-link').addEventListener('click', async function(){
+    try{
+      await navigator.clipboard.writeText(SESSION_LINK);
+      $('copy-msg').textContent = 'Copied';
+      setTimeout(() => { $('copy-msg').textContent = ''; }, 2500);
+    }catch(e){ window.prompt('Copy this link:', SESSION_LINK); }
+  });
+
+  $('join-form').addEventListener('submit', async function(ev){
+    ev.preventDefault();
+    const msg = $('join-msg');
+    const code = cleanCode($('join-code').value);
+    if(code.length < 4){ msg.textContent = 'Enter the code shown on the other screen.'; return; }
+    if(code === SESSION.code){ msg.textContent = 'You are already in this session.'; return; }
+    msg.textContent = 'Checking…';
+    try{
+      const res = await fetch(`${FIREBASE_URL}/bav_sessions/${code}.json`);
+      if(!res.ok) throw new Error('bad response');
+      const data = await res.json();
+      if(data === null){ msg.textContent = 'No session found with that code. Check it, and make sure the other screen is still open.'; return; }
+      history.replaceState(null, '', location.pathname + location.search + '#s=' + code);
+      location.reload();
+    }catch(e){ msg.textContent = 'Could not reach the server. Use one device and toggle Wallet Card / Till, or try again online.'; }
+  });
+
+  // pasting a different session link into this tab switches sessions cleanly
+  window.addEventListener('hashchange', function(){ location.reload(); });
+})();
+
+buildGrid('grid-groceries', CATALOG.groceries);
+buildGrid('grid-essentials-other', CATALOG.essentials_other);
+buildGrid('grid-discretionary', CATALOG.discretionary);
+renderBasket();
+
+if(!FIREBASE_CONFIGURED){
+  document.getElementById('setup-banner').style.display = 'block';
+  offlineMode = true;
+  setConnStatus(false, true);
+}
+render();
+setInterval(render, 2000);
+</script>
+</body>
+</html>

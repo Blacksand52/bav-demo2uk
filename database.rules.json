@@ -1,0 +1,143 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "bav_sessions": {
+      "$code": {
+        ".read": "$code.matches(/^[A-Z0-9]{4,10}$/)",
+        ".write": "$code.matches(/^[A-Z0-9]{4,10}$/)",
+        ".validate": "newData.hasChildren(['essential_balance_pence','discretionary_balance_pence'])",
+        "identity_ref": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "essential_balance_pence": {
+          ".validate": "newData.isNumber() && newData.val() >= -100000000 && newData.val() <= 100000000"
+        },
+        "discretionary_balance_pence": {
+          ".validate": "newData.isNumber() && newData.val() >= -100000000 && newData.val() <= 100000000"
+        },
+        "discretionary_cap_pence": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+        },
+        "cumulative_discretionary_spend_pence": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+        },
+        "decline_streak": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+        },
+        "card_frozen": {
+          ".validate": "newData.isBoolean()"
+        },
+        "created_at": {
+          ".validate": "newData.isNumber()"
+        },
+        "last_active": {
+          ".validate": "newData.isNumber()"
+        },
+        "last_tx": {
+          ".validate": "newData.val() === null || newData.hasChildren()"
+        },
+        "pending_payment": {
+          ".validate": "newData.val() === null || newData.hasChildren()"
+        },
+        "next_payment_date": {
+          ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 20)"
+        },
+        "notify_settings": {
+          "enabled": {
+            ".validate": "newData.isBoolean()"
+          },
+          "contact": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "next_essential_bill": {
+          "amount_pence": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+          },
+          "due_date": {
+            ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 20)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        },
+        "tx_count": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000"
+        },
+        "summary_dismissed": {
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    },
+    "bav_feedback": {
+      "$id": {
+        ".write": "!data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['fit','use','ts'])",
+        "fit": {
+          ".validate": "newData.isString() && newData.val().matches(/^(big|some|notreally|none)$/)"
+        },
+        "use": {
+          ".validate": "newData.isString() && newData.val().matches(/^(yes|maybe|no)$/)"
+        },
+        "note": {
+          ".validate": "newData.isString() && newData.val().length <= 600"
+        },
+        "role": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "uni": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "ref": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "ts": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "bav_testers": {
+      "$id": {
+        ".write": "!data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['name','email','adult','consent','ts'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length <= 200 && newData.val().matches(/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/)"
+        },
+        "adult": {
+          ".validate": "newData.val() === true"
+        },
+        "consent": {
+          ".validate": "newData.val() === true"
+        },
+        "uni": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "role": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "ref": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "ts": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

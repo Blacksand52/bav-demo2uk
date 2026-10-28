@@ -804,9 +804,14 @@ function writeLocalState(state){
   memoryState = state;
 }
 
+let writeSeq = 0;      // bumps on every local save, so stale poll results can be discarded
+let writesPending = 0; // saves currently in flight
+
 async function getState(){
-  // Prefer in-memory so 2s polls never wipe a payment just made offline
-  if(memoryState) return mergeState(memoryState);
+  // Offline / unconfigured: memory is the source of truth
+  if(memoryState && (!FIREBASE_CONFIGURED || offlineMode)) return mergeState(memoryState);
+  // Online: a save is in flight, so keep what we have rather than risk a stale read
+  if(memoryState && writesPending > 0) return mergeState(memoryState);
 
   if(!FIREBASE_CONFIGURED || offlineMode){
     const local = readLocalState();
@@ -818,10 +823,14 @@ async function getState(){
   }
 
   try{
-    const res = await fetch(DB_PATH);
+    const seqAtStart = writeSeq;
+    const res = await fetch(DB_PATH, { cache: 'no-store' });
     if(!res.ok) throw new Error('bad response');
     const data = await res.json();
     setConnStatus(true);
+    // A local save happened while this read was in flight: our copy is newer, so ignore the read
+    if(memoryState && (writeSeq !== seqAtStart || writesPending > 0)) return mergeState(memoryState);
+    if(data === null && memoryState){ return mergeState(memoryState); }
     if(data === null){
       const fresh = mergeState({});
       await saveState(fresh);
@@ -849,12 +858,14 @@ async function saveState(state){
   state.last_active = now;
   memoryState = state;
   writeLocalState(state);
+  writeSeq++;
 
   if(!FIREBASE_CONFIGURED || offlineMode){
     setConnStatus(false, true);
     return;
   }
 
+  writesPending++;
   try{
     const res = await fetch(DB_PATH, {
       method: 'PUT',
@@ -872,6 +883,8 @@ async function saveState(state){
       saveState._offlineLogged = true;
       log('Working offline on this device. Multi-device pairing needs a connection.', false, false, true);
     }
+  } finally {
+    writesPending = Math.max(0, writesPending - 1);
   }
 }
 
